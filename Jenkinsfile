@@ -5,9 +5,8 @@ pipeline {
         FRONT_IMAGE = "hyomee2/eon-frontend"
         BACK_IMAGE  = "hyomee2/eon-backend"
 
-        SAFE_BRANCH = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')}"
-        FRONT_TAG   = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-        BACK_TAG    = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
+        FRONT_TAG = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
+        BACK_TAG  = "${env.BRANCH_NAME}-${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -19,29 +18,38 @@ pipeline {
             }
         }
 
-        /* 2. 프론트엔드 Docker 이미지 생성 */
+        /* 2. 프론트엔드 빌드 + Docker 이미지 생성 */
         stage('Build Frontend Image') {
             steps {
                 script {
+                    // 프론트 빌드 (React)
                     dir('frontend') {
-                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}", ".")
+                        sh 'npm install'
+                        sh 'npm run build'
+
+                        // Docker 이미지 빌드 (DSL)
+                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}")
                     }
                 }
             }
         }
 
-        /* 3. 백엔드 Docker 이미지 생성 */
+        /* 3. 백엔드 빌드 + Docker 이미지 생성 */
         stage('Build Backend Image') {
             steps {
                 script {
                     dir('backend') {
-                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", ".")
+                        sh 'npm install'
+                        sh 'npm run build'
+
+                        // Backend Docker 이미지 빌드 (DSL)
+                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}")
                     }
                 }
             }
         }
 
-        /* 5. Docker Hub에 push */
+        /* 4. Docker Hub에 push */
         stage('Push image to DockerHub') {
             steps {
                 script {
@@ -59,7 +67,7 @@ pipeline {
             }
         }
 
-//         /* 6. 배포 (main 브랜치에서만) */
+//         /* 5. 배포 (main 브랜치에서만) */
 //         stage('Deploy') {
 //             when { branch 'main' }
 //             steps {
