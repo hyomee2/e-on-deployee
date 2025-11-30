@@ -18,38 +18,27 @@ pipeline {
             }
         }
 
-        /* 2. 프론트엔드 빌드 + Docker 이미지 생성 */
+        /* 2. 프론트엔드 Docker 이미지 생성 */
         stage('Build Frontend Image') {
             steps {
                 script {
-                    // 프론트 빌드 (React)
                     dir('frontend') {
-                        sh 'npm install'
-                        sh 'npm run build'
-
-                        // Docker 이미지 빌드 (DSL)
-                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}")
+                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}", "./frontend")
                     }
                 }
             }
         }
 
-        /* 3. 백엔드 빌드 + Docker 이미지 생성 */
+        /* 3. 백엔드 Docker 이미지 생성 */
         stage('Build Backend Image') {
             steps {
                 script {
-                    dir('backend') {
-                        sh 'npm install'
-                        sh 'npm run build'
-
-                        // Backend Docker 이미지 빌드 (DSL)
-                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}")
-                    }
+                    BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", "./backend")
                 }
             }
         }
 
-        /* 4. Docker Hub에 push */
+        /* 5. Docker Hub에 push */
         stage('Push image to DockerHub') {
             steps {
                 script {
@@ -67,7 +56,7 @@ pipeline {
             }
         }
 
-//         /* 5. 배포 (main 브랜치에서만) */
+//         /* 6. 배포 (main 브랜치에서만) */
 //         stage('Deploy') {
 //             when { branch 'main' }
 //             steps {
