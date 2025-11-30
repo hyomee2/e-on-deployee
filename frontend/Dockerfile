@@ -31,6 +31,5 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # 우리가 만든 nginx.conf를 Nginx의 기본 설정 파일 위치에 덮어씌운다.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Nginx는 기본적으로 80 포트를 사용
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
