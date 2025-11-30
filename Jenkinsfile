@@ -24,7 +24,7 @@ pipeline {
             steps {
                 script {
                     dir('frontend') {
-                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}", "./frontend")
+                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}", ".")
                     }
                 }
             }
@@ -34,7 +34,7 @@ pipeline {
         stage('Build Backend Image') {
             steps {
                 script {
-                    BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", "./backend")
+                    BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", ".")
                 }
             }
         }
