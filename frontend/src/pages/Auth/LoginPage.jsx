@@ -11,7 +11,7 @@ export default function Login() {
     const navigate = useNavigate();
 
     const handleKaKaoLogin = () => {
-        window.location.href = "http://localhost:4000/auth/kakao";
+        window.location.href = "/api/auth/kakao";
     };
 
     return (

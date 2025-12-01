@@ -24,7 +24,7 @@ export default function TimeRecommendationHistory() {
     <main style={{ padding: 16 }}>
       <ChallengeRecommendPanelHistory
         challenges={SAMPLE}
-        apiBase={process.env.NEXT_PUBLIC_AI_API_BASE || 'http://localhost:5000'}
+        apiBase={process.env.NEXT_PUBLIC_AI_API_BASE}
         title="프로필 맞춤 추천 (History)"
         placeholder="예: 개발 역량을 키우고 싶고, 매일 30분만 투자할 수 있어요."
         defaultText=""
