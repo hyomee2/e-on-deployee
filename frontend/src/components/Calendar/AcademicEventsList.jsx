@@ -14,14 +14,15 @@ const AcademicEventsList = () => {
     const { searchType } = useContext(SearchTypeContext);
     const { schedules } = useContext(ViewContext);
 
-    const startOfMonth = currentDate.startOf("month");
-    const endOfMonth = currentDate.endOf("month");
+    // schedules 안전 처리 (null/undefined/object 대비)
+    const safeSchedules = Array.isArray(schedules) ? schedules : [];
+
+    const startOfMonth = currentDate.clone().startOf("month");
+    const endOfMonth = currentDate.clone().endOf("month");
 
     // 해당 월 기준 이벤트 필터링
     const filteredEvents = useMemo(() => {
-        if (!schedules) return [];
-
-        return schedules
+        return safeSchedules
             .filter((event) => {
                 const dateStr =
                     searchType.type === "region"
@@ -59,7 +60,7 @@ const AcademicEventsList = () => {
 
                 return aDate.unix() - bDate.unix();
             });
-    }, [schedules, searchType, currentDate]);
+    }, [safeSchedules, searchType, currentDate]);
 
     // 필터링된 이벤트가 같은 날짜라면 묶음
     const groupedEvents = useMemo(() => {
@@ -76,7 +77,7 @@ const AcademicEventsList = () => {
                     ? dayjs(dateStr, "YYYY-MM-DD")
                     : dayjs(dateStr, "YYYYMMDD");
 
-            const day = eventDate.date(); // 날짜만 추출 (1~31)
+            const day = eventDate.date();
 
             if (!grouped[day]) {
                 grouped[day] = [];
@@ -88,7 +89,6 @@ const AcademicEventsList = () => {
             });
         });
 
-        // 날짜 기준으로 정렬된 배열로 변환
         return Object.entries(grouped)
             .sort((a, b) => Number(a[0]) - Number(b[0]))
             .map(([day, events]) => ({ day, events }));
@@ -101,9 +101,7 @@ const AcademicEventsList = () => {
             </div>
             <div className={styles.eventRows}>
                 {groupedEvents.length === 0 ? (
-                    <div className={styles.eventRow}>
-                        이 달의 일정이 없습니다.
-                    </div>
+                    <div className={styles.eventRow}>이 달의 일정이 없습니다.</div>
                 ) : (
                     groupedEvents.map(({ day, events }, idx) => (
                         <div className={styles.eventRow} key={idx}>
