@@ -28,7 +28,7 @@ exports.getMyInfo = async (req, res, next) => {
         }
         res.json({ success: true, user: me });
     } catch (err) {
-        next(err);
+        return null;
     }
 };
 
