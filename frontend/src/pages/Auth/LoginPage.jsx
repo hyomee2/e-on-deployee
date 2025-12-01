@@ -47,13 +47,13 @@ export default function Login() {
                         </button>
 
                         {/* ✅ 구글 로그인 버튼 추가 */}
-                        <button onClick={() => window.location.href = "http://localhost:4000/auth/google"} 
+                        <button onClick={() => window.location.href = "/api/auth/google"}
                          className={styles.googleButton}>
                             구글로 로그인
                         </button>
 
                         {/* ✅ 네이버 로그인 버튼 추가 */}
-                        <button onClick={() => window.location.href = "http://localhost:4000/auth/naver"} 
+                        <button onClick={() => window.location.href = "/api/auth/naver"}
                         className={styles.naverButton}>
                             네이버로 로그인
                         </button>

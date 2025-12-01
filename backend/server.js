@@ -13,7 +13,7 @@ const server = http.createServer(app);
 // 2) socket.io 생성 (CORS는 프론트 주소와 동일하게)
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL,
     credentials: true,
   },
 });

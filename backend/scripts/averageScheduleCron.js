@@ -4,7 +4,7 @@ const axios = require("axios");
 const { sequelize, AverageAcademicSchedule } = require("../models");
 
 const TIMEZONE = "Asia/Seoul";
-const TARGET_URL = "http://localhost:4000/averageSchedule/generate";
+const TARGET_URL = "/api/averageSchedule/generate";
 
 // 테이블 초기화(Truncate) 함수
 async function truncateAverageSchedules() {

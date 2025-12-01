@@ -24,7 +24,7 @@ app.use(helmet());
 // 보안 - 2) CORS 설정
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",
+        origin: process.env.FRONTEND_URL,
         credentials: true,
     })
 );
