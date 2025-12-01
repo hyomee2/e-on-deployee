@@ -35,8 +35,8 @@ const WeeklyView = () => {
                         ? date.format("YYYY-MM-DD")
                         : date.format("YYYYMMDD");
 
-                const event =
-                    schedules.filter((schedule) => {
+                const events = Array.isArray(schedules)
+                    ? schedules.filter((schedule) => {
                         if (searchType.type === "region") {
                             return (
                                 schedule.average_date === targetDate &&
@@ -45,7 +45,9 @@ const WeeklyView = () => {
                         } else {
                             return schedule.AA_YMD === targetDate;
                         }
-                    }) || null;
+                    })
+                    : [];
+
 
                 return (
                     <div
@@ -56,18 +58,14 @@ const WeeklyView = () => {
                         <div className={styles.dateText}>{date.date()}</div>
                         <div className={styles.weeklyEvent}>
                             {!isOtherMonth &&
-                                event.length > 0 &&
-                                event.map((event) => (
+                                events.length > 0 &&
+                                events.map((event) => (
                                     <EventBadge
-                                        key={
-                                            event.averageSchedule_id ||
-                                            event.AA_YMD
-                                        }
-                                        event_name={
-                                            event.event_name || event.EVENT_NM
-                                        }
+                                        key={event.averageSchedule_id || event.AA_YMD}
+                                        event_name={event.event_name || event.EVENT_NM}
                                     />
-                                ))}
+                                ))
+                            }
                         </div>
                     </div>
                 );
