@@ -6,6 +6,7 @@ pipeline {
         CLUSTER_NAME = 'eon-k8s'
         LOCATION = 'asia-northeast3-a'
         CREDENTIALS_ID = 'gcp-keyfile'
+        NAMESPACE = "eon"
 
         FRONT_IMAGE = "hyomee2/eon-frontend"
         BACK_IMAGE  = "hyomee2/eon-backend"
