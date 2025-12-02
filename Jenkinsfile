@@ -126,7 +126,7 @@ pipeline {
                         '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
                     """
 
-                    echo "✅ Backend Blue-Green switch complete"
+                    echo "✅ Backend switch complete from ${backCurrent} to ${backTargetDeploy}"
                  }
 
                  /* FRONTEND Blue–Green*/
