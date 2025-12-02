@@ -21,7 +21,7 @@ export default function SignupForm({ onFinish }) {
     const [error, setError] = useState("");
 
     const next1 = async () => {
-        await api.post("/auth/join/step1", { userType: data.type });
+        await api.post("/api/auth/join/step1", { userType: data.type });
         setStep(2);
     };
 
@@ -30,12 +30,12 @@ export default function SignupForm({ onFinish }) {
             setError("필수 약관에 동의해주세요.");
             return;
         }
-        await api.post("/auth/join/step2", { agreements: data.agreements });
+        await api.post("/api/auth/join/step2", { agreements: data.agreements });
         setStep(3);
     };
 
     const sendCode = async () => {
-        await api.post("/auth/join/email", { email: data.email });
+        await api.post("/api/auth/join/email", { email: data.email });
         setMsg("인증번호가 발송되었습니다.");
         toast("인증번호를 요청했습니다.", {
             className: "my-toast",
