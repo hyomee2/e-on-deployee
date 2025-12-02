@@ -66,7 +66,7 @@ const csrfProtection = csrf();
 app.use(csrfProtection);
 
 // 프론트가 토큰 가져갈 수 있도록 노출(예: GET /csrf-token)
-app.get("/csrf-token", (req, res) => {
+app.get("/api/csrf-token", (req, res) => {
     res.json({ csrfToken: req.csrfToken() });
 });
 
