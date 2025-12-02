@@ -17,7 +17,7 @@ export function useNotifications() {
 
   const fetchUnread = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/notifications/unread-count", {
+      const { data } = await api.get("/notifications/unread-count", {
         withCredentials: true,
       });
       setUnread(data?.count ?? 0);
@@ -28,7 +28,7 @@ export function useNotifications() {
 
   const fetchPage = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/notifications", {
+      const { data } = await api.get("/notifications", {
         params: { page, pageSize },
         withCredentials: true,
       });
