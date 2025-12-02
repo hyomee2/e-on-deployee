@@ -20,6 +20,9 @@ export default function SignupForm({ onFinish }) {
     const [msg, setMsg] = useState("");
     const [error, setError] = useState("");
 
+    console.log("API INSTANCE:", api);
+    console.log("BASEURL:", api.defaults.baseURL);
+
     const next1 = async () => {
         await api.post("/auth/join/step1", { userType: data.type });
         setStep(2);

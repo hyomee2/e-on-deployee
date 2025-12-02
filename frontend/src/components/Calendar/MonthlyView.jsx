@@ -10,6 +10,9 @@ const MonthlyView = () => {
     const { currentDate } = useContext(CurrentDateContext);
     const { searchType } = useContext(SearchTypeContext);
 
+    // schedules가 배열이 아닐 경우 대비
+    const safeSchedules = Array.isArray(schedules) ? schedules : [];
+
     const startOfMonth = currentDate.startOf("month");
     const endOfMonth = currentDate.endOf("month");
 
@@ -60,7 +63,7 @@ const MonthlyView = () => {
                             ? date.format("YYYY-MM-DD") // 예: 2025-06-13
                             : date.format("YYYYMMDD"); // 예: 20250613
 
-                    const filteredEvents = schedules.filter((schedule) => {
+                    const filteredEvents = safeSchedules.filter((schedule) => {
                         if (searchType.type === "region") {
                             return (
                                 schedule.average_date === targetDate &&
@@ -70,6 +73,7 @@ const MonthlyView = () => {
                             return schedule.AA_YMD === targetDate;
                         }
                     });
+
 
                     return (
                         <div

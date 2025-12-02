@@ -2,7 +2,7 @@
 import axios from "axios";
 
 export const axiosFlask = axios.create({
-  baseURL: import.meta.env.VITE_FLASK_BASE_URL || "http://localhost:5000",
+  baseURL: import.meta.env.VITE_FLASK_BASE_URL,
   withCredentials: false,              // 쿠키 절대 안 보냄
   timeout: 8000,
   headers: { "Content-Type": "application/json" },

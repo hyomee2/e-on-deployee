@@ -24,7 +24,7 @@ app.use(helmet());
 // 보안 - 2) CORS 설정
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",
+        origin: process.env.FRONTEND_URL,
         credentials: true,
     })
 );
@@ -66,24 +66,24 @@ const csrfProtection = csrf();
 app.use(csrfProtection);
 
 // 프론트가 토큰 가져갈 수 있도록 노출(예: GET /csrf-token)
-app.get("/csrf-token", (req, res) => {
+app.get("/api/csrf-token", (req, res) => {
     res.json({ csrfToken: req.csrfToken() });
 });
 
 // ───────────────────────────────────────────────
 // 인증 및 API 라우터 설정
-app.use("/admin", adminRouter);
-app.use("/auth", require("./routes/authRouter"));
+app.use("/api/admin", adminRouter);
+app.use("/api/auth", require("./routes/authRouter"));
 app.use("/api/user", require("./routes/userRouter"));
 app.use("/api/interests", require("./routes/interestRouter"));
 app.use("/api/activity", require("./routes/activity"));
 app.use("/api/notification", require("./routes/notificationRouter"));
 app.use("/api/notifications", require("./routes/notificationRouter"));
 
-app.use("/schoolSchedule", require("./routes/schoolScheduleRouter"));
-app.use("/averageSchedule", require("./routes/averageScheduleRouter"));
-app.use("/regions", require("./routes/regionRouter"));
-app.use("/mySchool", require("./routes/mySchoolRouter"));
+app.use("/api/schoolSchedule", require("./routes/schoolScheduleRouter"));
+app.use("/api/averageSchedule", require("./routes/averageScheduleRouter"));
+app.use("/api/regions", require("./routes/regionRouter"));
+app.use("/api/mySchool", require("./routes/mySchoolRouter"));
 app.use("/boards", require("./routes/boardRoute"));
 
 app.use("/api/ai", aiRecommendRoutes);

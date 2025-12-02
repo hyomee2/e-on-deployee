@@ -13,11 +13,11 @@ export function useNotifications() {
   const pageSize = 10;
 
   // 백엔드 주소 (.env에 VITE_API_URL=http://localhost:4000 권장)
-  const BASE_URL = import.meta.env?.VITE_API_URL || "http://localhost:4000";
+  const BASE_URL = import.meta.env?.VITE_API_URL;
 
   const fetchUnread = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/notifications/unread-count", {
+      const { data } = await api.get("/notifications/unread-count", {
         withCredentials: true,
       });
       setUnread(data?.count ?? 0);
@@ -28,7 +28,7 @@ export function useNotifications() {
 
   const fetchPage = useCallback(async () => {
     try {
-      const { data } = await api.get("/api/notifications", {
+      const { data } = await api.get("/notifications", {
         params: { page, pageSize },
         withCredentials: true,
       });

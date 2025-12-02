@@ -14,7 +14,7 @@ import CommentItem from "../../components/Community/CommentItem";
 import styles from "../../styles/Community/PostDetail.module.css";
 import { toast } from "react-toastify";
 
-const API = import.meta.env.VITE_BASE_URL || "http://localhost:4000";
+const API = import.meta.env.VITE_BASE_URL;
 
 const PostDetail = () => {
     const { post_id } = useParams();
