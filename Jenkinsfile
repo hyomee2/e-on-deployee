@@ -102,7 +102,7 @@ pipeline {
                     /*
                         blue -> green, green -> blue 배포 타겟 설정
                     */
-                    def backTargetDeploy   = (backCurrent == "blue") ? BACKEND_GREEN : BACKEND_BLUE
+                    def backTargetDeploy   = (backCurrent == "blue") ? BACK_GREEN : BACK_BLUE
                     def backTargetVersion  = (backCurrent == "blue") ? "green" : "blue"
 
                     echo "🔆 Backend current: ${backCurrent}, deploying to: ${backTargetDeploy}"
