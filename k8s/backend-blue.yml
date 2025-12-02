@@ -1,0 +1,126 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-blue
+  namespace: eon
+  labels:
+    app: backend
+    version: blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+      version: blue
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: blue
+    spec:
+      containers:
+        - name: backend
+          image: hyomee2/eon-backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 4000
+
+          env:
+            # 1. 데이터베이스 연결 정보
+            - name: DB_HOST
+              value: "34.64.222.199"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              value: "eon"
+            - name: DB_NAME
+              value: "eon"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: DB_PASSWORD
+
+            # 2. 서버 기본 설정
+            - name: PORT
+              value: "4000"
+            - name: FRONTEND_URL
+              value: "https://eon.n-e.kr"
+
+            # 3. 공공 데이터 API 키
+            - name: NEIS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: NEIS_API_KEY
+
+            - name: REGION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: REGION_API_KEY
+
+            # 4. SMTP (Gmail) 설정
+            - name: SMTP_HOST
+              value: "smtp.gmail.com"
+            - name: SMTP_PORT
+              value: "587"
+
+            - name: SMTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: SMTP_USER
+
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: SMTP_PASS
+
+            # 5. 세션 & OAuth
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: SESSION_SECRET
+
+            - name: KAKAO_ID
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: KAKAO_ID
+
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: GOOGLE_CLIENT_ID
+
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: GOOGLE_CLIENT_SECRET
+
+            - name: NAVER_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: NAVER_CLIENT_ID
+
+            - name: NAVER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: eon-secrets
+                  key: NAVER_CLIENT_SECRET
+
+            - name: DUMMY_VAR
+              value: "1"
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5

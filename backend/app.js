@@ -18,6 +18,10 @@ const app = express();
 app.set("trust proxy", 1);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+
 // 보안 - 1) 안전한 헤더
 app.use(helmet());
 
@@ -122,5 +126,7 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+
 
 module.exports = { app, sessionMiddleware };
