@@ -2,6 +2,11 @@ pipeline {
     agent any
 
     environment {
+        PROJECT_ID = 'e-on-deployee-478917'
+        CLUSTER_NAME = 'eon-k8s'
+        LOCATION = 'asia-northeast3-a'
+        CREDENTIALS_ID = 'eon-jenkins-app-cred'
+
         FRONT_IMAGE = "hyomee2/eon-frontend"
         BACK_IMAGE  = "hyomee2/eon-backend"
 
