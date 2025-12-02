@@ -15,13 +15,13 @@ pipeline {
         BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
         K8S_NAMESPACE = "eon"
-        FRONTEND_BLUE = "frontend-blue"
-        FRONTEND_GREEN = "frontend-green"
-        FRONTEND_SERVICE = "frontend-service"
+        FRONT_BLUE = "frontend-blue"
+        FRONT_GREEN = "frontend-green"
+        FRONT_SERVICE = "frontend-service"
 
-        BACKEND_BLUE = "backend-blue"
-        BACKEND_GREEN = "backend-green"
-        BACKEND_SERVICE = "backend-service"
+        BACK_BLUE = "backend-blue"
+        BACK_GREEN = "backend-green"
+        BACK_SERVICE = "backend-service"
     }
 
     stages {
