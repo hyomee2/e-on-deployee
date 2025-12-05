@@ -1,3 +1,19 @@
+def notifyDiscord(String title, String color, String description) {
+    withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_WEBHOOK')]) {
+        sh """
+        curl -H "Content-Type: application/json" -X POST \
+        -d '{
+            "embeds": [{
+                "title": "${title}",
+                "description": "${description}",
+                "color": ${color}
+            }]
+        }' \
+        $DISCORD_WEBHOOK
+        """
+    }
+}
+
 pipeline {
     agent any
 
@@ -26,12 +42,22 @@ pipeline {
     }
 
     stages {
-
         /* 1. 코드 체크아웃 */
         stage('Checkout') {
             steps {
                 checkout scm
                 echo "BRANCH_NAME = ${env.BRANCH_NAME}"
+
+                script {
+                    // 변경된 파일 목록 가져오기 (프론트/백 중 변경된 서비스만 빌드/배포)
+                    def changed = sh(
+                        script: "git diff --name-only HEAD~1 HEAD || true",
+                        returnStdout: true
+                    ).trim()
+
+                    env.FRONT_CHANGED = changed.contains("frontend/") ? "true" : "false"
+                    env.BACK_CHANGED  = changed.contains("backend/") ? "true" : "false"
+                }
             }
         }
 
@@ -64,12 +90,16 @@ pipeline {
                     docker.withRegistry('https://registry.hub.docker.com', 'hyomee2') {
 
                         // 프론트 push
-                        FRONT_DOCKER.push("${FRONT_TAG}")
-                        FRONT_DOCKER.push("latest")
+                        if (env.FRONT_CHANGED == "true") {
+                            FRONT_DOCKER.push("${FRONT_TAG}")
+                            FRONT_DOCKER.push("latest")
+                        }
 
                         // 백엔드 push
-                        BACK_DOCKER.push("${BACK_TAG}")
-                        BACK_DOCKER.push("latest")
+                        if (env.BACK_CHANGED == "true") {
+                            BACK_DOCKER.push("${BACK_TAG}")
+                            BACK_DOCKER.push("latest")
+                        }
                     }
                 }
             }
@@ -77,7 +107,6 @@ pipeline {
 
         /* 5. k8s 배포(Blue-Green) (main 브랜치에서만)*/
         stage('Deploy to K8S (Blue-Green)') {
-
             when {
                 anyOf {
                     branch 'main'
@@ -95,74 +124,109 @@ pipeline {
                     """
                  }
 
-                 /* BACKEND Blue–Green */
-                 script {
-                    echo "💭 Checking current backend live version"
-                    /*
-                    backend-service에서 .spec.selector.version 값을 읽어온다. -> 현재 서비스 중인 버전 감지 (blue / green)
-                    */
-                    def backCurrent = sh(
-                        script: "kubectl get svc ${BACK_SERVICE} -n ${NAMESPACE} -o jsonpath='{.spec.selector.version}'",
-                        returnStdout: true
-                    ).trim()
+                script {
+                    // 결과 알림에서 표시하기 위해 저장
+                    env.BACK_FROM = "-"
+                    env.BACK_TO   = "-"
+                    env.FRONT_FROM = "-"
+                    env.FRONT_TO   = "-"
+                }
 
-                    /*
-                        blue -> green, green -> blue 배포 타겟 설정
-                    */
+                 // BACKEND Blue–Green
+                 script {
+                    if (env.BACK_CHANGED == "true") {
+                        echo "💭 Checking current backend live version"
+
+                        def backCurrent = sh(
+                            script: "kubectl get svc ${BACK_SERVICE} -n ${NAMESPACE} -o jsonpath='{.spec.selector.version}'",
+                            returnStdout: true
+                        ).trim()
+
                     def backTargetDeploy   = (backCurrent == "blue") ? BACK_GREEN : BACK_BLUE
                     def backTargetVersion  = (backCurrent == "blue") ? "green" : "blue"
 
                     echo "🔆 Backend current: ${backCurrent}, deploying to: ${backTargetDeploy}"
 
-                    /*
-                    새 Deployment에 이미지 업데이트
-                    &
-                    rollout completion 확인
-                    (파드가 restart되고 ready가 될 때까지 jenkins가 기다리며, readinessProbe가 실패하면 중단됨)
-                    */
+                    env.BACK_FROM = current
+                    env.BACK_TO   = next
+
+                    // 새 Deployment에 이미지 업데이트 & rollout completion 확인 & 트래픽을 새로운 버전으로 전환 (service selector 전환)
                     sh """
                         kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${BACK_TAG} -n ${NAMESPACE}
                         kubectl rollout status deployment/${backTargetDeploy} -n ${NAMESPACE}
-                    """
-
-                    /*
-                    트래픽을 새로운 버전으로 전환 (service selector 전환)
-                    */
-                    sh """
-                        kubectl patch service ${BACK_SERVICE} -n ${NAMESPACE} -p \
-                        '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
+                        kubectl patch service ${BACK_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
                     """
 
                     echo "✅ Backend switch complete from ${backCurrent} to ${backTargetDeploy}"
+                    }
                  }
 
                  /* FRONTEND Blue–Green*/
                  script {
-                    echo "💭 Checking current frontend live version"
+                    if (env.FRONT_CHANGED == "true") {
+                        echo "💭 Checking current frontend live version"
 
-                    def frontCurrent = sh(
-                        script: "kubectl get svc ${FRONT_SERVICE} -n ${NAMESPACE} -o jsonpath='{.spec.selector.version}'",
-                        returnStdout: true
-                    ).trim()
+                        def frontCurrent = sh(
+                            script: "kubectl get svc ${FRONT_SERVICE} -n ${NAMESPACE} -o jsonpath='{.spec.selector.version}'",
+                            returnStdout: true
+                        ).trim()
 
-                    def frontTargetDeploy   = (frontCurrent == "blue") ? FRONT_GREEN : FRONT_BLUE
-                    def frontTargetVersion  = (frontCurrent == "blue") ? "green" : "blue"
+                        def frontTargetDeploy   = (frontCurrent == "blue") ? FRONT_GREEN : FRONT_BLUE
+                        def frontTargetVersion  = (frontCurrent == "blue") ? "green" : "blue"
 
-                    echo "🔆 Frontend current: ${frontCurrent}, deploying to: ${frontTargetDeploy}"
+                        echo "🔆 Frontend current: ${frontCurrent}, deploying to: ${frontTargetDeploy}"
 
-                    sh """
-                        kubectl set image deployment/${frontTargetDeploy} frontend=${FRONT_IMAGE}:${FRONT_TAG} -n ${NAMESPACE}
-                        kubectl rollout status deployment/${frontTargetDeploy} -n ${NAMESPACE}
-                    """
+                        env.FRONT_FROM = current
+                        env.FRONT_TO   = next
 
-                    sh """
-                        kubectl patch service ${FRONT_SERVICE} -n ${NAMESPACE} -p \
-                        '{"spec": {"selector": {"app": "frontend", "version": "${frontTargetVersion}"}}}'
-                    """
+                        sh """
+                            kubectl set image deployment/${frontTargetDeploy} frontend=${FRONT_IMAGE}:${FRONT_TAG} -n ${NAMESPACE}
+                            kubectl rollout status deployment/${frontTargetDeploy} -n ${NAMESPACE}
+                            kubectl patch service ${FRONT_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "frontend", "version": "${frontTargetVersion}"}}}'
+                        """
 
-                    echo "✅ Frontend Blue-Green switch complete"
+                        echo "✅ Frontend Blue-Green switch complete"
+                    }
+
                     echo "✅ All Blue-Green deployments finished"
                  }
+            }
+        }
+    }
+
+    /* Discord 알림 */
+    post {
+        success {
+            script {
+                notifyDiscord(
+                    "🎉 Blue/Green 배포 완료",
+                    "3066993",
+                    """
+                    **Backend:** ${env.BACK_FROM} → ${env.BACK_TO}
+                    **Frontend:** ${env.FRONT_FROM} → ${env.FRONT_TO}
+
+                    **Revision:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
+
+                    배포가 성공적으로 완료되었습니다!
+                    """
+                )
+            }
+        }
+
+        failure {
+            script {
+                // 로그 보여주기
+                def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
+
+                notifyDiscord(
+                    "❌ 배포 실패",
+                    "15158332",
+                    """
+                    배포 중 오류가 발생했습니다.
+
+                    ${logSnippet}
+                    """
+                )
             }
         }
     }
