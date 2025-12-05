@@ -24,28 +24,37 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 4000
-
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 5
           env:
             # 1. 데이터베이스 연결 정보
             - name: DB_HOST
-              value: "34.64.222.199"
-            - name: DB_PORT
-              value: "3306"
+              value: 127.0.0.1
             - name: DB_USER
-              value: "eon"
-            - name: DB_NAME
-              value: "eon"
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: DB_USER
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: eon-secrets
+                  name: cloudsql-db-credentials
                   key: DB_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: cloudsql-db-credentials
+                  key: DB_NAME
 
             # 2. 서버 기본 설정
             - name: PORT
               value: "4000"
             - name: FRONTEND_URL
-              value: "https://eon.n-e.kr"
+              value: "https://eon.r-e.kr"
 
             # 3. 공공 데이터 API 키
             - name: NEIS_API_KEY
@@ -115,9 +124,22 @@ spec:
                   name: eon-secrets
                   key: NAVER_CLIENT_SECRET
 
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 4000
-            initialDelaySeconds: 5
-            periodSeconds: 5
+        - name: cloud-sql-proxy
+          image: gcr.io/cloudsql-docker/gce-proxy:1.33.1
+          command:
+            - "/cloud_sql_proxy"
+            - --instances=eon-deployee:asia-northeast3:eon-db=tcp:3306
+            - "-credential_file=/secrets/cloudsql/credentials.json"
+          securityContext:
+            runAsNonRoot: true
+          volumeMounts:
+            - name: cloudsql-instance-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+
+
+
+      volumes:
+        - name: cloudsql-instance-credentials
+          secret:
+            secretName: cloudsql-instance-credentials
