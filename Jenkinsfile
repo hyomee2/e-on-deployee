@@ -61,7 +61,7 @@ pipeline {
         stage('Push image to DockerHub') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-cred') {
+                    docker.withRegistry('https://registry.hub.docker.com', 'hyomee2') {
 
                         // 프론트 push
                         FRONT_DOCKER.push("${FRONT_TAG}")
