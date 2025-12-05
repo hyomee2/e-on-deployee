@@ -27,7 +27,6 @@ app.get('/whoami', (req, res) => {
     res.send(`${podName}`);
 });
 
-
 // 보안 - 1) 안전한 헤더
 app.use(helmet());
 
