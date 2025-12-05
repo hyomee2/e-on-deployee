@@ -137,8 +137,6 @@ spec:
               mountPath: /secrets/cloudsql
               readOnly: true
 
-
-
       volumes:
         - name: cloudsql-instance-credentials
           secret:
