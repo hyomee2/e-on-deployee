@@ -22,6 +22,12 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+app.get('/whoami', (req, res) => {
+    const podName = process.env.HOSTNAME; // Kubernetes가 자동으로 설정해줌
+    res.send(`${podName}`);
+});
+
+
 // 보안 - 1) 안전한 헤더
 app.use(helmet());
 
