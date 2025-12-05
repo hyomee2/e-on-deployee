@@ -1,3 +1,19 @@
+def notifyDiscord(String title, String color, String description) {
+    withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_WEBHOOK')]) {
+        sh """
+        curl -H "Content-Type: application/json" -X POST \
+        -d '{
+            "embeds": [{
+                "title": "${title}",
+                "description": "${description}",
+                "color": ${color}
+            }]
+        }' \
+        $DISCORD_WEBHOOK
+        """
+    }
+}
+
 pipeline {
     agent any
 
@@ -174,6 +190,45 @@ pipeline {
 
                     echo "✅ All Blue-Green deployments finished"
                  }
+            }
+        }
+    }
+
+    /* Discord 알림 */
+    post {
+        success {
+            script {
+                notifyDiscord(
+                    "🎉 Blue/Green 배포 완료",
+                    "3066993",
+                    """
+                    **Backend:** ${env.BACK_FROM} → ${env.BACK_TO}
+                    **Frontend:** ${env.FRONT_FROM} → ${env.FRONT_TO}
+
+                    **Revision:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
+
+                    배포가 성공적으로 완료되었습니다!
+                    """
+                )
+            }
+        }
+
+        failure {
+            script {
+                // 로그 보여주기
+                def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
+
+                notifyDiscord(
+                    "❌ 배포 실패",
+                    "15158332",
+                    """
+                    배포 중 오류가 발생했습니다.
+
+                    \`\`\`
+                    ${logSnippet}
+                    \`\`\`
+                    """
+                )
             }
         }
     }
