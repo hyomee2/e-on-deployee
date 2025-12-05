@@ -1,18 +1,26 @@
 def notifyDiscord(String title, String color, String description) {
-    withCredentials([string(credentialsId: 'discord-webhook', variable: 'DISCORD_WEBHOOK')]) {
-        sh """
-        curl -H "Content-Type: application/json" -X POST \
-        -d '{
-            "embeds": [{
-                "title": "${title}",
-                "description": "${description}",
-                "color": ${color}
-            }]
-        }' \
-        $DISCORD_WEBHOOK
-        """
+    withCredentials([string(credentialsId: 'discord-webhook', variable: 'HOOK')]) {
+
+        def payload = groovy.json.JsonOutput.toJson([
+            embeds: [[
+                title: title,
+                description: description,
+                color: color.toInteger()
+            ]]
+        ])
+
+        sh(
+            script: """#!/bin/bash
+                curl -H "Content-Type: application/json" \
+                -X POST \
+                -d '${payload}' \
+                "\$HOOK"
+            """,
+            label: "Send Discord Notification"
+        )
     }
 }
+
 
 pipeline {
     agent any
@@ -147,8 +155,8 @@ pipeline {
 
                     echo "🔆 Backend current: ${backCurrent}, deploying to: ${backTargetDeploy}"
 
-                    env.BACK_FROM = current
-                    env.BACK_TO   = next
+                    env.BACK_FROM = backCurrent
+                    env.BACK_TO   = backTargetVersion
 
                     // 새 Deployment에 이미지 업데이트 & rollout completion 확인 & 트래픽을 새로운 버전으로 전환 (service selector 전환)
                     sh """
@@ -176,8 +184,8 @@ pipeline {
 
                         echo "🔆 Frontend current: ${frontCurrent}, deploying to: ${frontTargetDeploy}"
 
-                        env.FRONT_FROM = current
-                        env.FRONT_TO   = next
+                        env.FRONT_FROM = frontCurrent
+                        env.FRONT_TO   = frontTargetVersion
 
                         sh """
                             kubectl set image deployment/${frontTargetDeploy} frontend=${FRONT_IMAGE}:${FRONT_TAG} -n ${NAMESPACE}
@@ -198,35 +206,40 @@ pipeline {
     post {
         success {
             script {
-                notifyDiscord(
-                    "🎉 Blue/Green 배포 완료",
-                    "3066993",
-                    """
+                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                    notifyDiscord(
+                        "🎉 Blue/Green 배포 완료",
+                        "3066993",
+                        """
                     **Backend:** ${env.BACK_FROM} → ${env.BACK_TO}
                     **Frontend:** ${env.FRONT_FROM} → ${env.FRONT_TO}
 
-                    **Revision:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
+                    **변경사항:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
 
                     배포가 성공적으로 완료되었습니다!
                     """
-                )
+                        .stripIndent().trim()
+                    )
+                }
             }
         }
 
         failure {
             script {
-                // 로그 보여주기
-                def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
+                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                    // 로그 보여주기
+                    def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
 
-                notifyDiscord(
-                    "❌ 배포 실패",
-                    "15158332",
-                    """
-                    배포 중 오류가 발생했습니다.
+                    notifyDiscord(
+                        "❌ 배포 실패",
+                        "15158332",
+                        """
+                        배포 중 오류가 발생했습니다.
 
-                    ${logSnippet}
-                    """
-                )
+                        ${logSnippet}
+                        """
+                    )
+                }
             }
         }
     }
