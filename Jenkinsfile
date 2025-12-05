@@ -206,36 +206,40 @@ pipeline {
     post {
         success {
             script {
-                notifyDiscord(
-                    "🎉 Blue/Green 배포 완료",
-                    "3066993",
+                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                    notifyDiscord(
+                        "🎉 Blue/Green 배포 완료",
+                        "3066993",
+                        """
+                    **Backend:** ${env.BACK_FROM} → ${env.BACK_TO}
+                    **Frontend:** ${env.FRONT_FROM} → ${env.FRONT_TO}
+
+                    **변경사항:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
+
+                    배포가 성공적으로 완료되었습니다!
                     """
-                **Backend:** ${env.BACK_FROM} → ${env.BACK_TO}
-                **Frontend:** ${env.FRONT_FROM} → ${env.FRONT_TO}
-
-                **변경사항:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
-
-                배포가 성공적으로 완료되었습니다!
-                """
-                    .stripIndent().trim()
-                )
+                        .stripIndent().trim()
+                    )
+                }
             }
         }
 
         failure {
             script {
-                // 로그 보여주기
-                def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
+                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                    // 로그 보여주기
+                    def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
 
-                notifyDiscord(
-                    "❌ 배포 실패",
-                    "15158332",
-                    """
-                    배포 중 오류가 발생했습니다.
+                    notifyDiscord(
+                        "❌ 배포 실패",
+                        "15158332",
+                        """
+                        배포 중 오류가 발생했습니다.
 
-                    ${logSnippet}
-                    """
-                )
+                        ${logSnippet}
+                        """
+                    )
+                }
             }
         }
     }
