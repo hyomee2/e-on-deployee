@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_ID = 'e-on-deployee-478917'
-        CLUSTER_NAME = 'eon-k8s'
+        PROJECT_ID = 'eon-deployee'
+        CLUSTER_NAME = 'e-on-k8s'
         LOCATION = 'asia-northeast3-a'
         CREDENTIALS_ID = 'gcp-keyfile'
         NAMESPACE = "eon"
@@ -77,7 +77,14 @@ pipeline {
 
         /* 5. k8s 배포(Blue-Green) (main 브랜치에서만)*/
         stage('Deploy to K8S (Blue-Green)') {
-            when { branch 'main' }
+
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.CHANGE_TARGET == 'main' }
+                }
+            }
+
             steps {
                 /* GKE 인증 */
                  withCredentials([file(credentialsId: "${CREDENTIALS_ID}", variable: 'GCP_KEY')]) {
