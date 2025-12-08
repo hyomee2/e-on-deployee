@@ -159,7 +159,7 @@ const MyInfo = () => {
 
             // 변경된 내 정보 다시 조회해서 Context 갱신
             try {
-                const me = await api.get("/api/user/me");
+                const me = await api.get("/user/me");
                 setUser(me.data.user);
             } catch (err) {
                 console.warn("사용자 정보 재조회 실패", err);

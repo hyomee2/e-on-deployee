@@ -101,7 +101,7 @@ function AuthProvider({ children }) {
     useEffect(() => {
         const fetchMe = async () => {
             try {
-                const res = await api.get("/api/user/me"); // ✅ 변경된 경로
+                const res = await api.get("/user/me"); // ✅ 변경된 경로
                 setUser(res.data.user);
 
                 // ✅ localStorage에 저장
