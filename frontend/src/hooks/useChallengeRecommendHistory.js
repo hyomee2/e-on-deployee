@@ -5,7 +5,7 @@ const LS_KEY = 'challenge_recommend_history_runs';
 
 export function useChallengeRecommendHistory(opts) {
   const apiBase = (opts && opts.apiBase) || import.meta.env.VITE_API_BASE_URL + '/api/ai';
-  const timeoutMs = (opts && opts.timeoutMs) || 15000;
+  const timeoutMs = 15000;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
