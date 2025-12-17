@@ -25,7 +25,7 @@ const SchoolSearchBar = () => {
 
     const placeholder =
         searchType.type === "school"
-            ? "학교 이름을 정확히 입력하세요"
+            ? "학교 이름을 입력하세요"
             : "지역 이름을 정확히 입력하세요";
 
     const debouncedSearch = useCallback(
