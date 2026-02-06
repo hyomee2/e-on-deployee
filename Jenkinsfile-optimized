@@ -44,9 +44,6 @@ pipeline {
         BACK_GREEN = "backend-green"
         BACK_SERVICE = "backend-service"
 
-        FRONT_CHANGED = "false"
-        BACK_CHANGED  = "false"
-
         BACK_FROM  = "-"
         BACK_TO    = "-"
         FRONT_FROM = "-"
