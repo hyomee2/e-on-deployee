@@ -24,7 +24,7 @@ const BoardRequestList = () => {
             await updateBoardRequestStatus(requestId, newStatus);
             fetchBoardList();
         } catch (error) {
-            console.error("상태 변경 실패:", error);
+            console.error("상태 변경에 실패했습니다.:", error);
         }
     };
 
