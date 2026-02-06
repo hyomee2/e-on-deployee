@@ -46,9 +46,9 @@ pipeline {
 
         FRONT_CHANGED = "false"
         BACK_CHANGED  = "false"
-        SAFE_BRANCH = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')}"
-        FRONT_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-        BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
+        SAFE_BRANCH = "unset"
+        FRONT_TAG   = "unset"
+        BACK_TAG    = "unset"
 
         BACK_FROM  = "-"
         BACK_TO    = "-"
@@ -64,6 +64,16 @@ pipeline {
                 echo "BRANCH_NAME = ${env.BRANCH_NAME}"
 
                 script {
+                     def safe = env.BRANCH_NAME
+                          .replaceAll('[^A-Za-z0-9.-]', '-')
+                          .replaceAll('-+', '-')
+
+                     env.SAFE_BRANCH = safe
+                     env.FRONT_TAG = "${safe}-${env.BUILD_NUMBER}"
+                     env.BACK_TAG  = "${safe}-${env.BUILD_NUMBER}"
+
+                     echo "BRANCH=${env.BRANCH_NAME}, BUILD=${env.BUILD_NUMBER}, BACK_TAG=${env.BACK_TAG}"
+
                     // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
                     // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
                     sh 'git fetch --all --prune || true'
@@ -119,7 +129,7 @@ pipeline {
             steps {
                 script {
                     dir('backend') {
-                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", ".")
+                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${env.BACK_TAG}", ".")
                     }
                 }
             }
@@ -147,7 +157,7 @@ pipeline {
 
                         // 백엔드 push
                         if (env.BACK_CHANGED == "true") {
-                            BACK_DOCKER.push("${BACK_TAG}")
+                            BACK_DOCKER.push("${env.BACK_TAG}")
                             BACK_DOCKER.push("latest")
                         } else {
                             echo "⏭️ Backend unchanged. Skip push."
@@ -196,7 +206,7 @@ pipeline {
 
                     // 새 Deployment에 이미지 업데이트 & rollout completion 확인 & 트래픽을 새로운 버전으로 전환 (service selector 전환)
                     sh """
-                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${BACK_TAG} -n ${NAMESPACE}
+                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${env.BACK_TAG} -n ${NAMESPACE}
                         kubectl rollout status deployment/${backTargetDeploy} -n ${NAMESPACE}
                         kubectl patch service ${BACK_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
                     """

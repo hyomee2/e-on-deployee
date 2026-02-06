@@ -44,9 +44,9 @@ pipeline {
         BACK_GREEN = "backend-green"
         BACK_SERVICE = "backend-service"
 
-        SAFE_BRANCH = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')}"
-        FRONT_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-        BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
+        SAFE_BRANCH = "unset"
+        FRONT_TAG   = "unset"
+        BACK_TAG    = "unset"
 
         BACK_FROM  = "-"
         BACK_TO    = "-"
@@ -60,6 +60,18 @@ pipeline {
             steps {
                 checkout scm
                 echo "BRANCH_NAME = ${env.BRANCH_NAME}"
+
+                script {
+                     def safe = env.BRANCH_NAME
+                          .replaceAll('[^A-Za-z0-9.-]', '-')
+                          .replaceAll('-+', '-')
+
+                     env.SAFE_BRANCH = safe
+                     env.FRONT_TAG = "${safe}-${env.BUILD_NUMBER}"
+                     env.BACK_TAG  = "${safe}-${env.BUILD_NUMBER}"
+
+                     echo "BRANCH=${env.BRANCH_NAME}, BUILD=${env.BUILD_NUMBER}, BACK_TAG=${env.BACK_TAG}"
+                }
             }
         }
 
