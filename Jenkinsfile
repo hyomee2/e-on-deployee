@@ -35,9 +35,6 @@ pipeline {
         FRONT_IMAGE = "hyomee2/eon-frontend"
         BACK_IMAGE  = "hyomee2/eon-backend"
 
-        FRONT_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-        BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-
         K8S_NAMESPACE = "eon"
         FRONT_BLUE = "frontend-blue"
         FRONT_GREEN = "frontend-green"
@@ -69,8 +66,8 @@ pipeline {
                 script {
                     // 브랜치명 변환
                     env.SAFE_BRANCH = env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')
-                    env.FRONT_TAG = "${env.SAFE_BRANCH} - ${env.BUILD_NUMBER}"
-                    env.BACK_TAG = "${env.SAFE_BRANCH} - ${env.BUILD_NUMBER}"
+                    env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+                    env.BACK_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
                     // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
                     // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
@@ -82,20 +79,20 @@ pipeline {
 
                     // 변경된 파일 목록 가져오기 (...을 이용해서 브랜치가 갈라진 지점부터 지금까지 비교)
                     def changedRaw = sh(
-                        script: "git diff --name-only ${baseRef}... HEAD || true",
+                        script: "git diff --name-only ${baseRef}...HEAD || true",
                         returnStdout: true
                     ).trim()
 
                     // 변경된 파일 목록을 리스트 형태로 변환
-                    def changedList = (changedRaw.split("\\r?\\n") as List) : []
+                    def changedList = changedRaw ? (changedRaw.split("\\r?\\n") as List) : []
 
-                    def frontendChanged = files.any {
+                    def frontendChanged = changedList.any {
                         it.startsWith("frontend/") ||
                         it == "package.json" ||
                         it == "package-lock.json"
                     }
 
-                    def backendChanged = files.any {
+                    def backendChanged = changedList.any {
                         it.startsWith("backend/")
                     }
 
