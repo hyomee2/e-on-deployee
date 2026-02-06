@@ -26,7 +26,7 @@ exports.banUser = async (req, res) => {
     });
   } catch (err) {
     console.error("banUser ▶", err);
-    res.status(500).json({ message: "정지 처리 중 오류" });
+    res.status(500).json({ message: "정지 처리 중 오류가 발생했습니다." });
   }
 };
 
