@@ -204,7 +204,7 @@ pipeline {
 
                     **변경사항:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
 
-                    배포가 성공적으로 완료되었습니다!
+                    배포가 성공적으로 완료되었습니다!!
                     """
                         .stripIndent().trim()
                     )
