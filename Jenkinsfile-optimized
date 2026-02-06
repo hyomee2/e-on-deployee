@@ -100,6 +100,7 @@ pipeline {
 
                     env.FRONT_CHANGED = frontendChanged ? "true" : "false"
                     env.BACK_CHANGED = backendChanged ? "true" : "false"
+                    echo "frontendChanged = "${frontendChanged}", FRONT_CHANGED = "${env.FRONT_CHANGED}"
                 }
             }
         }
