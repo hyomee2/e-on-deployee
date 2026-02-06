@@ -68,7 +68,7 @@ pipeline {
             steps {
                 script {
                     dir('frontend') {
-                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${env.FRONT_TAG}", ".")
+                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}", ".")
                     }
                 }
             }
@@ -79,7 +79,7 @@ pipeline {
             steps {
                 script {
                     dir('backend') {
-                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${env.BACK_TAG}", ".")
+                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", ".")
                     }
                 }
             }
@@ -92,11 +92,11 @@ pipeline {
                     docker.withRegistry('https://registry.hub.docker.com', 'hyomee2') {
 
                     // 프론트 push
-                    FRONT_DOCKER.push("${env.FRONT_TAG}")
+                    FRONT_DOCKER.push("${FRONT_TAG}")
                     FRONT_DOCKER.push("latest")
 
                     // 백엔드 push
-                    BACK_DOCKER.push("${env.BACK_TAG}")
+                    BACK_DOCKER.push("${BACK_TAG}")
                     BACK_DOCKER.push("latest")
 
                     }
@@ -143,13 +143,12 @@ pipeline {
 
                     // 새 Deployment에 이미지 업데이트 & rollout completion 확인 & 트래픽을 새로운 버전으로 전환 (service selector 전환)
                     sh """
-                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${env.BACK_TAG} -n ${NAMESPACE}
+                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${BACK_TAG} -n ${NAMESPACE}
                         kubectl rollout status deployment/${backTargetDeploy} -n ${NAMESPACE}
                         kubectl patch service ${BACK_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
                     """
 
                     echo "✅ Backend switch complete from ${backCurrent} to ${backTargetDeploy}"
-                    }
                  }
 
                  /* FRONTEND Blue–Green*/
@@ -170,7 +169,7 @@ pipeline {
                     env.FRONT_TO   = frontTargetVersion
 
                     sh """
-                        kubectl set image deployment/${frontTargetDeploy} frontend=${FRONT_IMAGE}:${env.FRONT_TAG} -n ${NAMESPACE}
+                        kubectl set image deployment/${frontTargetDeploy} frontend=${FRONT_IMAGE}:${FRONT_TAG} -n ${NAMESPACE}
                         kubectl rollout status deployment/${frontTargetDeploy} -n ${NAMESPACE}
                         kubectl patch service ${FRONT_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "frontend", "version": "${frontTargetVersion}"}}}'
                     """
