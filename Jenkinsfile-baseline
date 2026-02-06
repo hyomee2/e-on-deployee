@@ -66,7 +66,7 @@ pipeline {
                      env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
                      env.BACK_TAG  = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
-                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, FRONT_TAG=${env.FRONT_TAG}, BACK_TAG=${env.BACK_TAG}"
+                     echo "✅ BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, FRONT_TAG=${env.FRONT_TAG}, BACK_TAG=${env.BACK_TAG}"
                 }
             }
         }
