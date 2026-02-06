@@ -21,7 +21,7 @@ rawConnection.connect(err => {
   if (err) {
     console.error('❌ MySQL(raw) 연결에 실패했습니다.:', err.message);
   } else {
-    console.log('✅ MySQL(raw) 연결 성공!');
+    console.log('✅ MySQL(raw) 연결에 성공했습니다!');
   }
 });
 
