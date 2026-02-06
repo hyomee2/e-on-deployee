@@ -59,10 +59,10 @@ pipeline {
         stage('Checkout & Detect Changes') {
             steps {
                 checkout scm
-                echo "BRANCH_NAME = ${env.BRANCH_NAME}"
+                echo "GIT_BRANCH= ${env.GIT_BRANCH}"
 
                 script {
-                     def safe = env.BRANCH_NAME
+                     def safe = env.GIT_BRANCH
                           .replaceAll('[^A-Za-z0-9.-]', '-')
                           .replaceAll('-+', '-')
 
@@ -70,7 +70,7 @@ pipeline {
                      env.FRONT_TAG = "${safe}-${env.BUILD_NUMBER}"
                      env.BACK_TAG  = "${safe}-${env.BUILD_NUMBER}"
 
-                     echo "BRANCH=${env.BRANCH_NAME}, BUILD=${env.BUILD_NUMBER}, BACK_TAG=${env.BACK_TAG}"
+                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, BACK_TAG=${env.BACK_TAG}"
                 }
             }
         }
@@ -198,7 +198,7 @@ pipeline {
     post {
         success {
             script {
-                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                if (env.GIT_BRANCH == "main" || env.CHANGE_TARGET == "main") {
                     notifyDiscord(
                         "🎉 Blue/Green 배포 완료",
                         "3066993",
@@ -218,7 +218,7 @@ pipeline {
 
         failure {
             script {
-                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                if (env.GIT_BRANCH == "main" || env.CHANGE_TARGET == "main") {
                     // 로그 보여주기
                     def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
 
