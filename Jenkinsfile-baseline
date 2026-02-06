@@ -44,10 +44,6 @@ pipeline {
         BACK_GREEN = "backend-green"
         BACK_SERVICE = "backend-service"
 
-        SAFE_BRANCH = "unset"
-        FRONT_TAG   = "unset"
-        BACK_TAG    = "unset"
-
         BACK_FROM  = "-"
         BACK_TO    = "-"
         FRONT_FROM = "-"
