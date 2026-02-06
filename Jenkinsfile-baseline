@@ -67,10 +67,10 @@ pipeline {
                           .replaceAll('-+', '-')
 
                      env.SAFE_BRANCH = safe
-                     env.FRONT_TAG = "${safe}-${env.BUILD_NUMBER}"
-                     env.BACK_TAG  = "${safe}-${env.BUILD_NUMBER}"
+                     env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+                     env.BACK_TAG  = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
-                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, BACK_TAG=${env.BACK_TAG}"
+                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, FRONT_TAG=${env.FRONT_TAG}, BACK_TAG=${env.BACK_TAG}"
                 }
             }
         }

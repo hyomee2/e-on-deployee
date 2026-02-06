@@ -69,10 +69,10 @@ pipeline {
                           .replaceAll('-+', '-')
 
                      env.SAFE_BRANCH = safe
-                     env.FRONT_TAG = "${safe}-${env.BUILD_NUMBER}"
-                     env.BACK_TAG  = "${safe}-${env.BUILD_NUMBER}"
+                     env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+                     env.BACK_TAG  = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
-                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, BACK_TAG=${env.BACK_TAG}"
+                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, FRONT_TAG=${env.FRONT_TAG}, BACK_TAG=${env.BACK_TAG}"
 
                     // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
                     // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
