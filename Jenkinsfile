@@ -35,7 +35,6 @@ pipeline {
         FRONT_IMAGE = "hyomee2/eon-frontend"
         BACK_IMAGE  = "hyomee2/eon-backend"
 
-        SAFE_BRANCH = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')}"
         FRONT_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
         BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
@@ -47,24 +46,61 @@ pipeline {
         BACK_BLUE = "backend-blue"
         BACK_GREEN = "backend-green"
         BACK_SERVICE = "backend-service"
+
+        FRONT_CHANGED = "false"
+        BACK_CHANGED  = "false"
+        SAFE_BRANCH   = ""
+        FRONT_TAG     = ""
+        BACK_TAG      = ""
+
+        BACK_FROM  = "-"
+        BACK_TO    = "-"
+        FRONT_FROM = "-"
+        FRONT_TO   = "-"
     }
 
     stages {
         /* 1. 코드 체크아웃 */
-        stage('Checkout') {
+        stage('Checkout & Detect Changes') {
             steps {
                 checkout scm
                 echo "BRANCH_NAME = ${env.BRANCH_NAME}"
 
                 script {
-                    // 변경된 파일 목록 가져오기 (프론트/백 중 변경된 서비스만 빌드/배포)
-                    def changed = sh(
-                        script: "git diff --name-only HEAD~1 HEAD || true",
+                    // 브랜치명 변환
+                    env.SAFE_BRANCH = env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')
+                    env.FRONT_TAG = "${env.SAFE_BRANCH} - ${env.BUILD_NUMBER}"
+                    env.BACK_TAG = "${env.SAFE_BRANCH} - ${env.BUILD_NUMBER}"
+
+                    // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
+                    // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
+                    sh 'git fetch --all --prune || true'
+
+                    // PR이면 타겟 브랜치(origin), 아니면 직전 커밋(HEAD~1)으로 baseRef 설정
+                    // CHANGE_TARGET: Jenkins PR 빌드에서만 생성
+                    def baseRef = env.CHANGE_TARGET ? "origin/${env.CHANGE_TARGET}" : "HEAD~1"
+
+                    // 변경된 파일 목록 가져오기 (...을 이용해서 브랜치가 갈라진 지점부터 지금까지 비교)
+                    def changedRaw = sh(
+                        script: "git diff --name-only ${baseRef}... HEAD || true",
                         returnStdout: true
                     ).trim()
 
-                    env.FRONT_CHANGED = changed.contains("frontend/") ? "true" : "false"
-                    env.BACK_CHANGED  = changed.contains("backend/") ? "true" : "false"
+                    // 변경된 파일 목록을 리스트 형태로 변환
+                    def changedList = (changedRaw.split("\\r?\\n") as List) : []
+
+                    def frontendChanged = files.any {
+                        it.startsWith("frontend/") ||
+                        it == "package.json" ||
+                        it == "package-lock.json"
+                    }
+
+                    def backendChanged = files.any {
+                        it.startsWith("backend/")
+                    }
+
+                    env.FRONT_CHANGED = frontendChanged ? "true" : "false"
+                    env.BACK_CHANGED = backendChanged ? "true" : "false"
                 }
             }
         }
@@ -93,6 +129,12 @@ pipeline {
 
         /* 4. Docker Hub에 push */
         stage('Push image to DockerHub') {
+            when {
+                anyOf {
+                    expression { env.FRONT_CHANGED == "true" }
+                    expression { env.BACK_CHANGED == "true" }
+                }
+            }
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'hyomee2') {
@@ -101,12 +143,16 @@ pipeline {
                         if (env.FRONT_CHANGED == "true") {
                             FRONT_DOCKER.push("${FRONT_TAG}")
                             FRONT_DOCKER.push("latest")
+                        } else {
+                            echo "⏭️ Frontend unchanged. Skip push."
                         }
 
                         // 백엔드 push
                         if (env.BACK_CHANGED == "true") {
                             BACK_DOCKER.push("${BACK_TAG}")
                             BACK_DOCKER.push("latest")
+                        } else {
+                            echo "⏭️ Backend unchanged. Skip push."
                         }
                     }
                 }
@@ -131,14 +177,6 @@ pipeline {
                         gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${LOCATION} --project ${PROJECT_ID}
                     """
                  }
-
-                script {
-                    // 결과 알림에서 표시하기 위해 저장
-                    env.BACK_FROM = "-"
-                    env.BACK_TO   = "-"
-                    env.FRONT_FROM = "-"
-                    env.FRONT_TO   = "-"
-                }
 
                  // BACKEND Blue–Green
                  script {
