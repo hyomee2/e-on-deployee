@@ -11,7 +11,7 @@ const BoardRequestList = () => {
             const response = await getAllBoardRequests();
             setRequestList(response.data.requests);
         } catch (error) {
-            console.error("게시판 개설 신청 목록 조회 실패", error);
+            console.error("게시판 개설 신청 목록 조회에 실패했습니다.", error);
         }
     };
 
@@ -24,7 +24,7 @@ const BoardRequestList = () => {
             await updateBoardRequestStatus(requestId, newStatus);
             fetchBoardList();
         } catch (error) {
-            console.error("상태 변경 실패:", error);
+            console.error("상태 변경에 실패했습니다.:", error);
         }
     };
 

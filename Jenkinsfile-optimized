@@ -44,12 +44,6 @@ pipeline {
         BACK_GREEN = "backend-green"
         BACK_SERVICE = "backend-service"
 
-        FRONT_CHANGED = "false"
-        BACK_CHANGED  = "false"
-        SAFE_BRANCH = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')}"
-        FRONT_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-        BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
-
         BACK_FROM  = "-"
         BACK_TO    = "-"
         FRONT_FROM = "-"
@@ -61,9 +55,19 @@ pipeline {
         stage('Checkout & Detect Changes') {
             steps {
                 checkout scm
-                echo "BRANCH_NAME = ${env.BRANCH_NAME}"
+                echo "GIT_BRANCH = ${env.GIT_BRANCH}"
 
                 script {
+                     def safe = env.GIT_BRANCH
+                          .replaceAll('[^A-Za-z0-9.-]', '-')
+                          .replaceAll('-+', '-')
+
+                     env.SAFE_BRANCH = safe
+                     env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+                     env.BACK_TAG  = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+
+                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, FRONT_TAG=${env.FRONT_TAG}, BACK_TAG=${env.BACK_TAG}"
+
                     // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
                     // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
                     sh 'git fetch --all --prune || true'
@@ -93,6 +97,7 @@ pipeline {
 
                     env.FRONT_CHANGED = frontendChanged ? "true" : "false"
                     env.BACK_CHANGED = backendChanged ? "true" : "false"
+                    echo "frontendChanged = ${frontendChanged}, FRONT_CHANGED = ${env.FRONT_CHANGED}"
                 }
             }
         }
@@ -119,7 +124,7 @@ pipeline {
             steps {
                 script {
                     dir('backend') {
-                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${BACK_TAG}", ".")
+                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${env.BACK_TAG}", ".")
                     }
                 }
             }
@@ -147,7 +152,7 @@ pipeline {
 
                         // 백엔드 push
                         if (env.BACK_CHANGED == "true") {
-                            BACK_DOCKER.push("${BACK_TAG}")
+                            BACK_DOCKER.push("${env.BACK_TAG}")
                             BACK_DOCKER.push("latest")
                         } else {
                             echo "⏭️ Backend unchanged. Skip push."
@@ -196,7 +201,7 @@ pipeline {
 
                     // 새 Deployment에 이미지 업데이트 & rollout completion 확인 & 트래픽을 새로운 버전으로 전환 (service selector 전환)
                     sh """
-                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${BACK_TAG} -n ${NAMESPACE}
+                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${env.BACK_TAG} -n ${NAMESPACE}
                         kubectl rollout status deployment/${backTargetDeploy} -n ${NAMESPACE}
                         kubectl patch service ${BACK_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
                     """
@@ -242,7 +247,7 @@ pipeline {
     post {
         success {
             script {
-                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                if (env.GIT_BRANCH == "main" || env.CHANGE_TARGET == "main") {
                     notifyDiscord(
                         "🎉 Blue/Green 배포 완료",
                         "3066993",
@@ -262,7 +267,7 @@ pipeline {
 
         failure {
             script {
-                if (env.BRANCH_NAME == "main" || env.CHANGE_TARGET == "main") {
+                if (env.GIT_BRANCH == "main" || env.CHANGE_TARGET == "main") {
                     // 로그 보여주기
                     def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
 
