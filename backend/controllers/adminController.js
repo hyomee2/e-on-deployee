@@ -8,7 +8,7 @@ const User = db.User;
 exports.banUser = async (req, res) => {
   try {
     const { user_id, duration_hours = 0 } = req.body;
-    if (!user_id) return res.status(400).json({ message: "user_id 필요" });
+    if (!user_id) return res.status(400).json({ message: "user_id가 필요합니다." });
 
     const target = await User.findByPk(user_id);
     if (!target) return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
