@@ -46,9 +46,9 @@ pipeline {
 
         FRONT_CHANGED = "false"
         BACK_CHANGED  = "false"
-        SAFE_BRANCH   = ""
-        FRONT_TAG     = ""
-        BACK_TAG      = ""
+        SAFE_BRANCH = "${env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')}"
+        FRONT_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
+        BACK_TAG = "${SAFE_BRANCH}-${env.BUILD_NUMBER}"
 
         BACK_FROM  = "-"
         BACK_TO    = "-"
@@ -64,11 +64,6 @@ pipeline {
                 echo "BRANCH_NAME = ${env.BRANCH_NAME}"
 
                 script {
-                    // 브랜치명 변환
-                    env.SAFE_BRANCH = env.BRANCH_NAME.replaceAll('[^A-Za-z0-9.-]', '-').replaceAll('-+', '-')
-                    env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
-                    env.BACK_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
-
                     // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
                     // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
                     sh 'git fetch --all --prune || true'
@@ -85,7 +80,7 @@ pipeline {
 
                     // 변경된 파일 목록을 리스트 형태로 변환
                     def changedList = changedRaw ? (changedRaw.split("\\r?\\n") as List) : []
-
+                    echo "changedList: ${changedList}"
                     def frontendChanged = changedList.any {
                         it.startsWith("frontend/") ||
                         it == "package.json" ||
@@ -104,6 +99,9 @@ pipeline {
 
         /* 2. 프론트엔드 Docker 이미지 생성 */
         stage('Build Frontend Image') {
+            when {
+                expression { env.FRONT_CHANGED == "true" }
+            }
             steps {
                 script {
                     dir('frontend') {
@@ -115,6 +113,9 @@ pipeline {
 
         /* 3. 백엔드 Docker 이미지 생성 */
         stage('Build Backend Image') {
+            when {
+                expression { env.BACK_CHANGED == "true" }
+            }
             steps {
                 script {
                     dir('backend') {
