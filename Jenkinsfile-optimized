@@ -21,7 +21,6 @@ def notifyDiscord(String title, String color, String description) {
     }
 }
 
-
 pipeline {
     agent any
 
@@ -72,31 +71,46 @@ pipeline {
                     // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
                     sh 'git fetch --all --prune || true'
 
-                    // PR이면 타겟 브랜치(origin), 아니면 직전 커밋(HEAD~1)으로 baseRef 설정
-                    // CHANGE_TARGET: Jenkins PR 빌드에서만 생성
-                    def baseRef = env.CHANGE_TARGET ? "origin/${env.CHANGE_TARGET}" : "HEAD~1"
+                    // 1) PR 빌드면: 타겟 브랜치와의 merge-base 기준 비교
+                    // 2) 일반 브랜치 빌드면: 지난 "성공한" 빌드 커밋부터 현재 HEAD까지 비교 (누락 방지)
+                    def baseRef
+                    def diffRange
 
-                    // 변경된 파일 목록 가져오기 (...을 이용해서 브랜치가 갈라진 지점부터 지금까지 비교)
+                    if (env.CHANGE_TARGET) {
+                        baseRef = "origin/${env.CHANGE_TARGET}"
+                        diffRange = "${baseRef}...HEAD"     // PR: merge-base 기준
+                    } else {
+                        baseRef = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: "HEAD~1"
+                        diffRange = "${baseRef}..HEAD"      // Branch: 지난 성공 빌드 이후 전체 반영
+                    }
+                    
+                    echo "Diff baseRef=${baseRef}, range=${diffRange}"
+
                     def changedRaw = sh(
-                        script: "git diff --name-only ${baseRef}...HEAD || true",
+                        script: "git diff --name-only ${diffRange} || true",
                         returnStdout: true
                     ).trim()
 
                     // 변경된 파일 목록을 리스트 형태로 변환
                     def changedList = changedRaw ? (changedRaw.split("\\r?\\n") as List) : []
-                    echo "changedList: ${changedList}"
+
+                    def globalChanged = changedList.any {
+                        it == "Jenkinsfile-optimized" ||
+                        it.startsWith("k8s/") ||
+                        it == "docker-compose.yml"
+                    }
+
                     def frontendChanged = changedList.any {
                         it.startsWith("frontend/") ||
-                        it == "package.json" ||
-                        it == "package-lock.json"
+                        it == "package.json"
                     }
 
                     def backendChanged = changedList.any {
                         it.startsWith("backend/")
                     }
 
-                    env.FRONT_CHANGED = frontendChanged ? "true" : "false"
-                    env.BACK_CHANGED = backendChanged ? "true" : "false"
+                    env.FRONT_CHANGED = (frontendChanged || globalChanged) ? "true" : "false"
+                    env.BACK_CHANGED = (backendChanged || globalChanged) ? "true" : "false"
                     echo "✅ frontendChanged = ${frontendChanged}, FRONT_CHANGED = ${env.FRONT_CHANGED}"
                 }
             }
