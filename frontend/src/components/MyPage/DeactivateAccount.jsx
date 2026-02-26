@@ -72,7 +72,7 @@ const DeactivateAccount = () => {
         } catch (err) {
             setMessage({
                 type: "error",
-                text: err.response?.data?.message || "인증 실패",
+                text: err.response?.data?.message || "인증에 실패했습니다.",
             });
         }
     };

@@ -1,0 +1,301 @@
+def notifyDiscord(String title, String color, String description) {
+    withCredentials([string(credentialsId: 'discord-webhook', variable: 'HOOK')]) {
+
+        def payload = groovy.json.JsonOutput.toJson([
+            embeds: [[
+                title: title,
+                description: description,
+                color: color.toInteger()
+            ]]
+        ])
+
+        sh(
+            script: """#!/bin/bash
+                curl -H "Content-Type: application/json" \
+                -X POST \
+                -d '${payload}' \
+                "\$HOOK"
+            """,
+            label: "Send Discord Notification"
+        )
+    }
+}
+
+pipeline {
+    agent any
+
+    environment {
+        PROJECT_ID = 'eon-deployee'
+        CLUSTER_NAME = 'e-on-k8s'
+        LOCATION = 'asia-northeast3-a'
+        CREDENTIALS_ID = 'gcp-key-file'
+        NAMESPACE = "eon"
+
+        FRONT_IMAGE = "hyomee2/eon-frontend"
+        BACK_IMAGE  = "hyomee2/eon-backend"
+
+        K8S_NAMESPACE = "eon"
+        FRONT_BLUE = "frontend-blue"
+        FRONT_GREEN = "frontend-green"
+        FRONT_SERVICE = "frontend-service"
+
+        BACK_BLUE = "backend-blue"
+        BACK_GREEN = "backend-green"
+        BACK_SERVICE = "backend-service"
+
+        BACK_FROM  = "-"
+        BACK_TO    = "-"
+        FRONT_FROM = "-"
+        FRONT_TO   = "-"
+    }
+
+    stages {
+        /* 1. 코드 체크아웃 */
+        stage('Checkout & Detect Changes') {
+            steps {
+                checkout scm
+                echo "GIT_BRANCH = ${env.GIT_BRANCH}"
+
+                script {
+                     def safe = env.GIT_BRANCH
+                          .replaceAll('[^A-Za-z0-9.-]', '-')
+                          .replaceAll('-+', '-')
+
+                     env.SAFE_BRANCH = safe
+                     env.FRONT_TAG = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+                     env.BACK_TAG  = "${env.SAFE_BRANCH}-${env.BUILD_NUMBER}"
+
+                     echo "BRANCH=${env.GIT_BRANCH}, BUILD=${env.BUILD_NUMBER}, FRONT_TAG=${env.FRONT_TAG}, BACK_TAG=${env.BACK_TAG}"
+
+                    // 원격의 최신 브랜치를 모두 가져오고 원격에서 삭제된 브랜치 로컬에서 정리(꼬임 방지)
+                    // 실패해도 파이프라인의 진행을 위해 ''|| true' 추가
+                    sh 'git fetch --all --prune || true'
+
+                    // 1) PR 빌드면: 타겟 브랜치와의 merge-base 기준 비교
+                    // 2) 일반 브랜치 빌드면: 지난 "성공한" 빌드 커밋부터 현재 HEAD까지 비교 (누락 방지)
+                    def baseRef
+                    def diffRange
+
+                    if (env.CHANGE_TARGET) {
+                        baseRef = "origin/${env.CHANGE_TARGET}"
+                        diffRange = "${baseRef}...HEAD"     // PR: merge-base 기준
+                    } else {
+                        baseRef = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT ?: "HEAD~1"
+                        diffRange = "${baseRef}..HEAD"      // Branch: 지난 성공 빌드 이후 전체 반영
+                    }
+                    
+                    echo "Diff baseRef=${baseRef}, range=${diffRange}"
+
+                    def changedRaw = sh(
+                        script: "git diff --name-only ${diffRange} || true",
+                        returnStdout: true
+                    ).trim()
+
+                    // 변경된 파일 목록을 리스트 형태로 변환
+                    def changedList = changedRaw ? (changedRaw.split("\\r?\\n") as List) : []
+
+                    def globalChanged = changedList.any {
+                        it == "Jenkinsfile-optimized" ||
+                        it.startsWith("k8s/") ||
+                        it == "docker-compose.yml"
+                    }
+
+                    def frontendChanged = changedList.any {
+                        it.startsWith("frontend/") ||
+                        it == "package.json"
+                    }
+
+                    def backendChanged = changedList.any {
+                        it.startsWith("backend/")
+                    }
+
+                    env.FRONT_CHANGED = (frontendChanged || globalChanged) ? "true" : "false"
+                    env.BACK_CHANGED = (backendChanged || globalChanged) ? "true" : "false"
+                    echo "✅ frontendChanged = ${frontendChanged}, FRONT_CHANGED = ${env.FRONT_CHANGED}"
+                }
+            }
+        }
+
+        /* 2. 프론트엔드 Docker 이미지 생성 */
+        stage('Build Frontend Image') {
+            when {
+                expression { env.FRONT_CHANGED == "true" }
+            }
+            steps {
+                script {
+                    dir('frontend') {
+                        FRONT_DOCKER = docker.build("${FRONT_IMAGE}:${FRONT_TAG}", ".")
+                    }
+                }
+            }
+        }
+
+        /* 3. 백엔드 Docker 이미지 생성 */
+        stage('Build Backend Image') {
+            when {
+                expression { env.BACK_CHANGED == "true" }
+            }
+            steps {
+                script {
+                    dir('backend') {
+                        BACK_DOCKER = docker.build("${BACK_IMAGE}:${env.BACK_TAG}", ".")
+                    }
+                }
+            }
+        }
+
+        /* 4. Docker Hub에 push */
+        stage('Push image to DockerHub') {
+            when {
+                anyOf {
+                    expression { env.FRONT_CHANGED == "true" }
+                    expression { env.BACK_CHANGED == "true" }
+                }
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'hyomee2') {
+
+                        // 프론트 push
+                        if (env.FRONT_CHANGED == "true") {
+                            FRONT_DOCKER.push("${FRONT_TAG}")
+                            FRONT_DOCKER.push("latest")
+                        } else {
+                            echo "⏭️ Frontend unchanged. Skip push."
+                        }
+
+                        // 백엔드 push
+                        if (env.BACK_CHANGED == "true") {
+                            BACK_DOCKER.push("${env.BACK_TAG}")
+                            BACK_DOCKER.push("latest")
+                        } else {
+                            echo "⏭️ Backend unchanged. Skip push."
+                        }
+                    }
+                }
+            }
+        }
+
+        /* 5. k8s 배포(Blue-Green) (main 브랜치에서만)*/
+        stage('Deploy to K8S (Blue-Green)') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.CHANGE_TARGET == 'main' }
+                }
+            }
+
+            steps {
+                /* GKE 인증 */
+                 withCredentials([file(credentialsId: "${CREDENTIALS_ID}", variable: 'GCP_KEY')]) {
+                    sh """
+                        echo "💭 Authenticating with GKE"
+                        gcloud auth activate-service-account --key-file=\$GCP_KEY
+                        gcloud container clusters get-credentials ${CLUSTER_NAME} --zone ${LOCATION} --project ${PROJECT_ID}
+                    """
+                 }
+
+                 // BACKEND Blue–Green
+                 script {
+                    if (env.BACK_CHANGED == "true") {
+                        echo "💭 Checking current backend live version"
+
+                        def backCurrent = sh(
+                            script: "kubectl get svc ${BACK_SERVICE} -n ${NAMESPACE} -o jsonpath='{.spec.selector.version}'",
+                            returnStdout: true
+                        ).trim()
+
+                    def backTargetDeploy   = (backCurrent == "blue") ? BACK_GREEN : BACK_BLUE
+                    def backTargetVersion  = (backCurrent == "blue") ? "green" : "blue"
+
+                    echo "🔆 Backend current: ${backCurrent}, deploying to: ${backTargetDeploy}"
+
+                    env.BACK_FROM = backCurrent
+                    env.BACK_TO   = backTargetVersion
+
+                    // 새 Deployment에 이미지 업데이트 & rollout completion 확인 & 트래픽을 새로운 버전으로 전환 (service selector 전환)
+                    sh """
+                        kubectl set image deployment/${backTargetDeploy} backend=${BACK_IMAGE}:${env.BACK_TAG} -n ${NAMESPACE}
+                        kubectl rollout status deployment/${backTargetDeploy} -n ${NAMESPACE}
+                        kubectl patch service ${BACK_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "backend", "version": "${backTargetVersion}"}}}'
+                    """
+
+                    echo "✅ Backend switch complete from ${backCurrent} to ${backTargetDeploy}"
+                    }
+                 }
+
+                 /* FRONTEND Blue–Green*/
+                 script {
+                    if (env.FRONT_CHANGED == "true") {
+                        echo "💭 Checking current frontend live version"
+
+                        def frontCurrent = sh(
+                            script: "kubectl get svc ${FRONT_SERVICE} -n ${NAMESPACE} -o jsonpath='{.spec.selector.version}'",
+                            returnStdout: true
+                        ).trim()
+
+                        def frontTargetDeploy   = (frontCurrent == "blue") ? FRONT_GREEN : FRONT_BLUE
+                        def frontTargetVersion  = (frontCurrent == "blue") ? "green" : "blue"
+
+                        echo "🔆 Frontend current: ${frontCurrent}, deploying to: ${frontTargetDeploy}"
+
+                        env.FRONT_FROM = frontCurrent
+                        env.FRONT_TO   = frontTargetVersion
+
+                        sh """
+                            kubectl set image deployment/${frontTargetDeploy} frontend=${FRONT_IMAGE}:${FRONT_TAG} -n ${NAMESPACE}
+                            kubectl rollout status deployment/${frontTargetDeploy} -n ${NAMESPACE}
+                            kubectl patch service ${FRONT_SERVICE} -n ${NAMESPACE} -p '{"spec": {"selector": {"app": "frontend", "version": "${frontTargetVersion}"}}}'
+                        """
+
+                        echo "✅ Frontend Blue-Green switch complete"
+                    }
+
+                    echo "✅ All Blue-Green deployments finished"
+                 }
+            }
+        }
+    }
+
+    /* Discord 알림 */
+    post {
+        success {
+            script {
+                if (env.GIT_BRANCH == "main" || env.CHANGE_TARGET == "main") {
+                    notifyDiscord(
+                        "🎉 Blue/Green 배포 완료",
+                        "3066993",
+                        """
+                    **Backend:** ${env.BACK_FROM} → ${env.BACK_TO}
+                    **Frontend:** ${env.FRONT_FROM} → ${env.FRONT_TO}
+
+                    **변경사항:** ${env.SAFE_BRANCH}-${env.BUILD_NUMBER}
+
+                    배포가 성공적으로 완료되었습니다!!
+                    """
+                        .stripIndent().trim()
+                    )
+                }
+            }
+        }
+
+        failure {
+            script {
+                if (env.GIT_BRANCH == "main" || env.CHANGE_TARGET == "main") {
+                    // 로그 보여주기
+                    def logSnippet = currentBuild.rawBuild?.getLog(20)?.join("\\n") ?: "로그 없음"
+
+                    notifyDiscord(
+                        "❌ 배포 실패",
+                        "15158332",
+                        """
+                        배포 중 오류가 발생했습니다.
+
+                        ${logSnippet}
+                        """
+                    )
+                }
+            }
+        }
+    }
+}
